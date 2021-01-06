@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gluttonous Snake</title>
+    <style>
+        .container{
+            width:500px;
+            height: 500px;
+            margin:auto;
+            margin-top:100px;
+        }
+        .app{
+            width:100%;
+            height: 100%;
+            border: 1px solid black;
+            position: relative;
+        }
+        .snake{
+            height:auto;
+            width:auto;
+        }
+        .snake-child{
+            width:10px;
+            height:10px;
+            background-color: aquamarine;
+            position: absolute;
+        }
+        .snake-child:first-child{
+            background-color: red;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="app"></div>
+        <div class="bottom">
+            <span>score: <i class="score-in">0</i></span>
+            <button class="start">play</button>
+            <select class="map-level">
+                <option value="500">500*500</option>
+                <option value="350">350*350</option>
+                <option value="200">200*200</option>
+            </select>
+            <label>speed:
+                <input class="speed" type="number" value="100">
+            </label>
+        </div>
+    </div>
+</body>
+<script>
+    // 2021年1月5日 Peng Pan
+    const $ = ( target ) => document.querySelector(target)
+    const map = $('.app') // main map
+    const snakeBody = document.createElement('div')
+    const gameState = {
+        runState:{
+            status: 'pause',   // game status
+            code: 'ArrowRight' // init direciton
+        },
+        food:[],            // food array
+        timer:undefined,    // game timer
+        timerSpeed:100,     // snake move speed
+        height:500,         // map height
+        width:500,          // map width
+        score:0,            // game score
+    }
+
+    // 🐍body
+    let snake_body = [
+        {
+            x: 40,
+            y: 10,
+            el: renderSnakeBody()
+        },
+        {
+            x: 30,
+            y: 10,
+            el: renderSnakeBody()
+        },
+        {
+            x: 20,
+            y: 10,
+            el: renderSnakeBody()
+        },{
+            x:10,
+            y:10,
+            el: renderSnakeBody()
+        }
+    ]
+
+    // create snake body
+    function renderSnakeBody(class_name) {
+        let val = document.createElement('div')
+        val.classList.add('snake-child')
+        class_name&&val.classList.add(class_name)
+        return val
+    }
+
+    // create snake
+    function createSnake(){
+
+        $('.snake') && map.removeChild($('.snake'))
+        snakeBody.classList.add('snake')
+
+        snake_body.forEach( (item,index) => {
+
+            item.el.style.cssText = `
+                left:${item.x}px;
+                top:${item.y}px;
+            `
+            item.el.setAttribute('data-index',index)
+            snakeBody.append(item.el)
+
+        })
+        map.append(snakeBody)
+    }
+
+    // eat food
+    function growUp(x,y){
+        const basicInfo = {
+            x: x,
+            y: y,
+            el: renderSnakeBody() 
+        }
+        basicInfo.el.style.cssText=`
+            top:${y}px;
+            left:${x}px;
+        `
+        snake_body.push(basicInfo)
+        snakeBody.append(basicInfo.el)
+        $('.score-in').innerText = ++gameState.score
+
+    }
+
+    // create food
+    function createFood() {
+        if(gameState.food.length>0) {
+            gameState.food[0].el.remove()
+            gameState.food = []
+        }
+        const basicPositon = {
+            x: Math.round(Math.random()*gameState.width) % (gameState.width / 10) * 10,
+            y: Math.round(Math.random()*gameState.width) % (gameState.width / 10) * 10,
+            el: renderSnakeBody()
+        }
+        basicPositon.el.style.cssText=`
+            top:${basicPositon.y}px;
+            left:${basicPositon.x}px;
+        `
+        gameState.food.push(basicPositon)
+        map.append(basicPositon.el)
+    }
+
+    // Collision detection by food
+    function collisionDetectionByFood(p1, p2){
+        /* food */
+        const p1x = p1.x
+        const p1y = p1.y
+        const p2x = p2.x
+        const p2y = p2.y
+        if(p1x === p2x && p1y === p2y){
+            createFood()
+            growUp(p2x,p2y)
+        }
+    }
+    
+    // map border and snake body
+    function collisionDetection(p1){
+        const p1x = p1.x
+        const p1y = p1.y
+        /* map */
+        if(p1x < 0 || p1x > gameState.width - 10 || p1y < 0 || p1y > gameState.height - 10){
+            restart()
+        }
+        let snakeHeartX = snake_body[0].x
+        let snakeHeartY = snake_body[0].y
+        snake_body.forEach( (item, index) => {
+
+            if(index===0) return
+            const {x, y} = item
+
+            if(snakeHeartX === x && snakeHeartY === y){
+                restart()
+            }
+        })
+    }
+    
+    // restart the game
+    function restart() {
+        $('.snake').innerHTML = ''
+        $('.start').innerText = 'play'
+        gameState.runState.code = 'ArrowRight'
+        gameState.runState.status = 'pause'
+        clearInterval(gameState.timer)
+        snake_body = [
+            {
+                x: 20,
+                y: 10,
+                el: renderSnakeBody()
+            },{
+                x:10,
+                y:10,
+                el: renderSnakeBody()
+            }
+        ]
+        alert('GAME OVER!')
+        createSnake()
+        createFood()
+
+    }
+
+    // snake move ..
+    function run(event) {
+        let tempTwoPosition = JSON.parse(JSON.stringify(snake_body[0]))
+        switch(event.code){
+            case 'ArrowUp':
+                snake_body[0].y -= 10
+            break;
+            case 'ArrowDown':
+                snake_body[0].y += 10
+            break;
+            case 'ArrowRight':
+                snake_body[0].x += 10
+            break;
+            case 'ArrowLeft':
+                snake_body[0].x -= 10
+            break;
+        }
+
+        snake_body[0].el.style.cssText = `
+            left:${snake_body[0].x}px;
+            top:${snake_body[0].y}px;
+        `
+
+        for(let i = snake_body.length - 1; i >= 0; i --){
+            if(i !== 0&&i !== 1){
+                snake_body[i].x = snake_body[i - 1].x
+                snake_body[i].y = snake_body[i - 1].y
+            }
+            else if(i == 1){
+                snake_body[i].x = tempTwoPosition.x
+                snake_body[i].y = tempTwoPosition.y
+            }
+            snake_body[i].el.style.cssText = `
+                left:${snake_body[i].x}px;
+                top:${snake_body[i].y}px;
+            `
+            snake_body[i].el.setAttribute('data-index',i)
+        }
+        collisionDetection(snake_body[0])
+        collisionDetectionByFood(snake_body[0],gameState.food[0])
+    }
+    
+    // main bootstrap
+    function bootstrap() {
+        createSnake()
+        createFood()
+        document.onkeydown =  (event) => {
+            switch(event.code){
+                case 'ArrowUp':
+                    if(snake_body[0].y > snake_body[1].y) return
+                    gameState.runState.code = event.code
+                break;
+                case 'ArrowDown':
+                    if(snake_body[0].y < snake_body[1].y) return
+                    gameState.runState.code = event.code
+                break;
+                case 'ArrowRight':
+                    if(snake_body[0].x < snake_body[1].x) return
+                    gameState.runState.code = event.code
+                break;
+                case 'ArrowLeft':
+                    if(snake_body[0].x > snake_body[1].x) return
+                    gameState.runState.code = event.code
+                break;
+                case 'Space':
+                    $('.start').click()
+                break;
+            }
+        }
+        // Click the play button 
+        $('.start').onclick = function(){
+            if(gameState.runState.status === 'pause'){
+                gameState.runState.status = 'running'
+                gameState.timer = setInterval(() => { run(gameState.runState) } ,gameState.timerSpeed)
+                this.innerText = 'pause'
+            }else{
+                gameState.runState.status = 'pause'
+                clearInterval(gameState.timer)
+                this.innerText = 'play'
+            }
+        }
+        // Switch map level
+        $('.map-level').onchange = function(){
+            gameState.width = gameState.height = this.value
+            createFood()
+            if(this.value == 200){
+                $('.container').style.cssText = `
+                    width:200px;
+                    height:200px;
+                `
+            }else if(this.value == 350){
+                $('.container').style.cssText = `
+                    width:350px;
+                    height:350px;
+                `
+            }else{
+                $('.container').style.cssText = `
+                    width:500px;
+                    height:500px;
+                `
+            }
+        }
+        // set the move speed
+        $('.speed').oninput = function(){
+            gameState.timerSpeed = this.value
+        }
+    }
+
+    bootstrap();
+</script>
+</html>
